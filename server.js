@@ -63,8 +63,11 @@ wss.on('connection', ws => {
     if (msg.type === 'list') send(ws,{type:'rooms',rooms:publicRooms()});
 
     if (msg.type === 'create') {
+      const name=String(msg.name||'').trim().slice(0,22);
+      if (!name) return send(ws,{type:'error',message:'Enter a room name.'});
+      const format=[8000,4000].includes(Number(msg.format))?Number(msg.format):8000;
       const id = Math.random().toString(36).slice(2,8).toUpperCase();
-      const room={id,name:String(msg.name||'New Room').slice(0,22),host:client.name,format:Number(msg.format||8000),status:'waiting',createdAt:Date.now(),players:[{id:clientId,name:client.name,ready:false,connected:true,ws}],chat:[]};
+      const room={id,name,host:client.name,format,status:'waiting',createdAt:Date.now(),players:[{id:clientId,name:client.name,ready:false,connected:true,ws}],chat:[]};
       rooms.set(id,room); client.roomId=id;
       send(ws,{type:'joined',roomId:id,role:'host'}); broadcastRoom(room); broadcastRooms();
     }

@@ -96,15 +96,24 @@ function connectOnline(){
   if(onlineSocket&&onlineSocket.readyState<=1)return;
   const proto=location.protocol==='https:'?'wss':'ws';
   onlineSocket=new WebSocket(`${proto}://${location.host}`);
-  onlineSocket.onopen=()=>{onlineSocket.send(JSON.stringify({type:'name',name:$('playerInput').value.trim()||'Duelist'}));onlineSocket.send(JSON.stringify({type:'list'}))};
+  onlineSocket.onopen=()=>{onlineSocket.send(JSON.stringify({type:'name',name:$('playerInput').value.trim()||'Duelist'}));onlineSocket.send(JSON.stringify({type:'list'}));const st=$('onlineStatus');if(st)st.textContent='CONNECTED'};
   onlineSocket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}
-    if(m.type==='rooms'){onlineRooms=m.rooms||[];refreshRoomList()}
-    if(m.type==='joined'){onlineRoomId=m.roomId;onlineRole=m.role;showWaitingRoom()}
+    if(m.type==='hello'||m.type==='rooms'){onlineRooms=m.rooms||[];refreshRoomList()}
+    if(m.type==='joined'){onlineRoomId=m.roomId;onlineRole=m.role;showWaitingRoom();onlineSocket.send(JSON.stringify({type:'list'}))}
     if(m.type==='room-update'){refreshWaitingRoom(m.room)}
     if(m.type==='chat'){appendOnlineChat(m.name,m.text)}
     if(m.type==='error')toast(m.message)
   };
-  onlineSocket.onclose=()=>{onlineRooms=[];onlineRoomId=null;onlineRole=null};
+  onlineSocket.onclose=()=>{const st=$('onlineStatus');if(st)st.textContent='DISCONNECTED';onlineRooms=[];onlineRoomId=null;onlineRole=null};
+}
+function waitForOnlineReady(callback){
+  connectOnline();
+  if(onlineSocket?.readyState===1)return callback();
+  if(!onlineSocket)return toast('Unable to connect to the online server.');
+  const socket=onlineSocket;
+  const finish=()=>{socket.onopen=null;callback()};
+  socket.addEventListener('open',finish,{once:true});
+  toast('Connecting to server…');
 }
 function refreshRoomList(){
   const el=$('roomListItems');if(!el)return;
@@ -114,7 +123,16 @@ function refreshRoomList(){
 function openRoomList(){connectOnline();
   modalHtml('LIVE ROOM LIST',`<div class="online-create"><input id="onlineRoomName" maxlength="22" value="${escapeHtml($('roomInput').value.trim()||'Skyline Room')}"><select id="onlineFormat"><option value="8000">8000 LP</option><option value="4000">4000 LP</option></select><button id="createOnlineRoom">CREATE ROOM</button></div><div class="room-status"><i></i><span id="onlineStatus">CONNECTING…</span></div><div class="room-list" id="roomListItems"><div class="room-empty">Searching live rooms…</div></div>`,[{text:'CLOSE',class:'secondary-btn'}]);
   setTimeout(()=>{const st=$('onlineStatus');if(st)st.textContent=onlineSocket?.readyState===1?'CONNECTED':'CONNECTING…';refreshRoomList()},300);
-  $('createOnlineRoom').onclick=()=>{if(!onlineSocket||onlineSocket.readyState!==1)return toast('Server is connecting. Try again.');onlineSocket.send(JSON.stringify({type:'name',name:$('playerInput').value.trim()||'Duelist'}));onlineSocket.send(JSON.stringify({type:'create',name:$('onlineRoomName').value,format:Number($('onlineFormat').value)}))};
+  $('createOnlineRoom').onclick=()=>{
+    const name=$('onlineRoomName').value.trim();
+    if(!name)return toast('Enter a room name.');
+    waitForOnlineReady(()=>{
+      const btn=$('createOnlineRoom');if(btn)btn.disabled=true;
+      onlineSocket.send(JSON.stringify({type:'name',name:$('playerInput').value.trim()||'Duelist'}));
+      onlineSocket.send(JSON.stringify({type:'create',name:name.slice(0,22),format:Number($('onlineFormat').value)}));
+      onlineSocket.send(JSON.stringify({type:'list'}));
+    });
+  };
 }
 function joinOnlineRoom(id){if(!onlineSocket||onlineSocket.readyState!==1)return toast('Server is connecting.');onlineSocket.send(JSON.stringify({type:'name',name:$('playerInput').value.trim()||'Duelist'}));onlineSocket.send(JSON.stringify({type:'join',roomId:id}))}
 function showWaitingRoom(){
