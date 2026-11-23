@@ -1,0 +1,25 @@
+{
+  "name": "playground",
+  "version": "1.0.0",
+  "description": "<!-- omgithub:readme:start --> ## 🚀 Build, play, and remix with OMGithub",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --check server.js && node --check index.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vem11no/PlayGround.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/vem11no/PlayGround/issues"
+  },
+  "homepage": "https://github.com/vem11no/PlayGround#readme",
+  "dependencies": {
+    "ws": "^8.23.0"
+  }
+}
